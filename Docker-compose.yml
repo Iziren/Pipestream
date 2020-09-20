@@ -1,0 +1,57 @@
+version: "3"
+
+services:
+  blacksmith_gateway:
+    container_name: "blacksmith_gateway"
+    build: "./"
+    restart: "unless-stopped"
+    entrypoint: ["blacksmith", "start", "--service", "gateway"]
+    environment:
+      NATS_SERVER_URL: "nats://blacksmith_pubsub:4222"
+      POSTGRES_STORE_URL: "postgres://smithy:qwerty@blacksmith_store:5432/smithy?sslmode=disable"
+      POSTGRES_WANDERER_URL: "postgres://smithy:qwerty@blacksmith_store:5432/smithy?sslmode=disable"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - "blacksmith_store"
+      - "blacksmith_pubsub"
+
+  blacksmith_scheduler:
+    container_name: "blacksmith_scheduler"
+    build: "./"
+    restart: "unless-stopped"
+    entrypoint: ["blacksmith", "start", "--service", "scheduler"]
+    environment:
+      NATS_SERVER_URL: "nats://blacksmith_pubsub:4222"
+      POSTGRES_STORE_URL: "postgres://smithy:qwerty@blacksmith_store:5432/smithy?sslmode=disable"
+      POSTGRES_WANDERER_URL: "postgres://smithy:qwerty@blacksmith_store:5432/smithy?sslmode=disable"
+    ports:
+      - "8081:8081"
+    depends_on:
+      - "blacksmith_store"
+      - "blacksmith_pubsub"
+
+  blacksmith_store:
+    container_name: "blacksmith_store"
+    image: "postgres:12-alpine"
+    restart: "unless-stopped"
+    environment:
+      POSTGRES_DB: "smithy"
+      POSTGRES_USER: "smithy"
+      POSTGRES_PASSWORD: "qwerty"
+    volumes:
+      - "./migrations:/docker-entrypoint-initdb.d"
+      - "smithy:/var/lib/postgresql/data"
+    ports:
+      - "5432:5432"
+
+  blacksmith_pubsub:
+    container_name: "blacksmith_pubsub"
+    image: "nats:2-alpine"
+    restart: "unless-stopped"
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+volumes:
+  smithy:
